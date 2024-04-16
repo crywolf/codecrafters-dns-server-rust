@@ -1,5 +1,3 @@
-use bytes::{Buf, BufMut};
-
 #[allow(clippy::upper_case_acronyms, dead_code)]
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub enum ResultCode {
@@ -122,7 +120,8 @@ impl DnsHeader {
     ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
     ///  |                    ARCOUNT                    |
     ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    pub fn read_bytes(&mut self, buf: &mut impl Buf) {
+    ///
+    pub fn read_bytes(&mut self, buf: &mut impl bytes::Buf) {
         self.id = buf.get_u16();
 
         let flags = buf.get_u16();
@@ -162,7 +161,8 @@ impl DnsHeader {
     ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
     ///  |                    ARCOUNT                    |
     ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    pub fn write_bytes(&self, buf: &mut impl BufMut) {
+    ///
+    pub fn write_bytes(&self, buf: &mut impl bytes::BufMut) {
         buf.put_u16(self.id);
 
         let a: u8 = (self.response as u8) << 7
