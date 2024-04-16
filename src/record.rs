@@ -81,6 +81,26 @@ impl DnsRecord {
             data,
         }
     }
+
+    pub fn from_bytes(buf: &mut impl bytes::Buf) -> Self {
+        let domain_name = DomainName::from_bytes(buf);
+        let query_type = RecordType::from(buf.get_u16());
+        let class = RecordClass::from(buf.get_u16());
+        let ttl = buf.get_u32();
+        let _length = buf.get_u16();
+        let data = Ipv4Addr::new(buf.get_u8(), buf.get_u8(), buf.get_u8(), buf.get_u8());
+
+        Self::new(domain_name, query_type, class, ttl, data)
+    }
+
+    pub fn write_bytes(&self, buf: &mut impl bytes::BufMut) {
+        self.domain_name.write_bytes(buf);
+        buf.put_u16(RecordType::A.into());
+        buf.put_u16(RecordClass::IN.into());
+        buf.put_u32(self.ttl);
+        buf.put_u16(self.length);
+        buf.put(&self.data.octets()[..]);
+    }
 }
 
 #[allow(clippy::upper_case_acronyms)]

@@ -25,7 +25,7 @@ impl DomainName {
     }
 
     pub fn from_bytes(buf: &mut impl bytes::Buf) -> Self {
-        let mut domain_name = DomainName::new();
+        let mut domain_name = Self::new();
         domain_name.read_bytes(buf);
         domain_name
     }

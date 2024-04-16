@@ -32,13 +32,10 @@ which relate to the query, but are not strictly answers for the
 question.
 */
 
-use std::net::Ipv4Addr;
-
-use crate::domain_name::DomainName;
 use crate::header::DnsHeader;
-use crate::question::{DnsQuestion, QueryClass, QueryType};
-use crate::record::{DnsRecord, RecordClass, RecordType};
-use bytes::{Buf, BufMut, BytesMut};
+use crate::question::DnsQuestion;
+use crate::record::DnsRecord;
+use bytes::BytesMut;
 
 /// Whole DNS packet
 #[derive(Debug, Clone, PartialEq)]
@@ -69,25 +66,14 @@ impl From<BytesPacket> for DnsPacket {
         // Questions
         let mut questions = vec![];
         for _i in 0..header.question_entries {
-            let domain_name = DomainName::from_bytes(&mut buf);
-            let query_type = QueryType::from(buf.get_u16());
-            let class = QueryClass::from(buf.get_u16());
-
-            let question = DnsQuestion::new(domain_name, query_type, class);
+            let question = DnsQuestion::from_bytes(&mut buf);
             questions.push(question);
         }
 
         // Answers
         let mut answers = vec![];
         for _i in 0..header.answer_entries {
-            let domain_name = DomainName::from_bytes(&mut buf);
-            let query_type = RecordType::from(buf.get_u16());
-            let class = RecordClass::from(buf.get_u16());
-            let ttl = buf.get_u32();
-            let _length = buf.get_u16();
-            let data = Ipv4Addr::new(buf.get_u8(), buf.get_u8(), buf.get_u8(), buf.get_u8());
-
-            let answer = DnsRecord::new(domain_name, query_type, class, ttl, data);
+            let answer = DnsRecord::from_bytes(&mut buf);
             answers.push(answer);
         }
 
@@ -128,10 +114,7 @@ impl From<DnsPacket> for BytesPacket {
                 .get(i)
                 .expect("questions should not be empty if correct count was set");
 
-            question.domain_name.write_bytes(&mut bp.buf);
-
-            bp.buf.put_u16(QueryType::A.into());
-            bp.buf.put_u16(QueryClass::IN.into());
+            question.write_bytes(&mut bp.buf);
         }
 
         // Answers
@@ -141,12 +124,7 @@ impl From<DnsPacket> for BytesPacket {
                 .get(i)
                 .expect("answers should not be empty if correct count was set");
 
-            answer.domain_name.write_bytes(&mut bp.buf);
-            bp.buf.put_u16(QueryType::A.into());
-            bp.buf.put_u16(QueryClass::IN.into());
-            bp.buf.put_u32(answer.ttl);
-            bp.buf.put_u16(answer.length);
-            bp.buf.put(&answer.data.octets()[..]);
+            answer.write_bytes(&mut bp.buf);
         }
 
         bp
@@ -156,6 +134,12 @@ impl From<DnsPacket> for BytesPacket {
 #[cfg(test)]
 mod tests {
     use std::net::Ipv4Addr;
+
+    use crate::{
+        domain_name::DomainName,
+        question::{QueryClass, QueryType},
+        record::{RecordClass, RecordType},
+    };
 
     use super::*;
 

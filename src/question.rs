@@ -45,6 +45,21 @@ impl DnsQuestion {
             class,
         }
     }
+
+    pub fn from_bytes(buf: &mut impl bytes::Buf) -> Self {
+        let domain_name = DomainName::from_bytes(buf);
+        let query_type = QueryType::from(buf.get_u16());
+        let class = QueryClass::from(buf.get_u16());
+
+        Self::new(domain_name, query_type, class)
+    }
+
+    pub fn write_bytes(&self, buf: &mut impl bytes::BufMut) {
+        self.domain_name.write_bytes(buf);
+
+        buf.put_u16(QueryType::A.into());
+        buf.put_u16(QueryClass::IN.into());
+    }
 }
 
 #[allow(clippy::upper_case_acronyms)]
