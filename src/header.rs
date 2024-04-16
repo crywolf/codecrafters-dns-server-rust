@@ -1,5 +1,7 @@
+use bytes::{Buf, BufMut};
+
 #[allow(clippy::upper_case_acronyms, dead_code)]
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub enum ResultCode {
     // No error condition
     #[default]
@@ -99,5 +101,85 @@ pub struct DnsHeader {
 impl DnsHeader {
     pub fn new() -> Self {
         Self::default()
+    }
+}
+
+impl DnsHeader {
+    /// Creates [`DnsHeader`] from it's bytes representation
+    ///
+    ///                                  1  1  1  1  1  1
+    ///    0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
+    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    ///  |                      ID                       |
+    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    ///  |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
+    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    ///  |                    QDCOUNT                    |
+    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    ///  |                    ANCOUNT                    |
+    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    ///  |                    NSCOUNT                    |
+    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    ///  |                    ARCOUNT                    |
+    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    pub fn read_bytes(&mut self, buf: &mut impl Buf) {
+        self.id = buf.get_u16();
+
+        let flags = buf.get_u16();
+        let a = (flags >> 8) as u8;
+        let b = (flags & 0xFF) as u8;
+
+        self.response = (a & (1 << 7)) > 0;
+        self.opcode = (a >> 3) & 0x0F;
+        self.authoritative_answer = (a & (1 << 2)) > 0;
+        self.truncated_message = (a & (1 << 1)) > 0;
+        self.recursion_desired = (a & (1 << 0)) > 0;
+
+        self.recursion_available = (b & (1 << 7)) > 0;
+        self.z = (b & (1 << 6)) > 0;
+        self.rescode = ResultCode::from(b & 0x0F);
+
+        self.question_entries = buf.get_u16();
+        self.answer_entries = buf.get_u16();
+        self.authoritative_entries = buf.get_u16();
+        self.additional_entries = buf.get_u16();
+    }
+
+    /// Converts [`DnsHeader`] to bytes representation
+    ///
+    ///                                  1  1  1  1  1  1
+    ///    0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
+    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    ///  |                      ID                       |
+    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    ///  |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
+    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    ///  |                    QDCOUNT                    |
+    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    ///  |                    ANCOUNT                    |
+    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    ///  |                    NSCOUNT                    |
+    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    ///  |                    ARCOUNT                    |
+    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    pub fn write_bytes(&self, buf: &mut impl BufMut) {
+        buf.put_u16(self.id);
+
+        let a: u8 = (self.response as u8) << 7
+            | (self.opcode << 3)
+            | (self.authoritative_answer as u8) << 2
+            | (self.truncated_message as u8) << 1
+            | (self.recursion_desired as u8);
+
+        let b: u8 =
+            (self.recursion_available as u8) << 7 | (self.z as u8) << 6 | (self.rescode as u8);
+
+        let flags = (a as u16) << 8 | (b as u16);
+        buf.put_u16(flags);
+
+        buf.put_u16(self.question_entries);
+        buf.put_u16(self.answer_entries);
+        buf.put_u16(self.authoritative_entries);
+        buf.put_u16(self.additional_entries);
     }
 }

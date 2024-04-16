@@ -1,4 +1,4 @@
-use crate::header::{DnsHeader, ResultCode};
+use crate::header::DnsHeader;
 use crate::question::{DnsQuestion, QueryClass, QueryType};
 use bytes::{Buf, BufMut, BytesMut};
 
@@ -19,47 +19,14 @@ impl DnsPacket {
 }
 
 impl From<BytesPacket> for DnsPacket {
-    ///                                  1  1  1  1  1  1
-    ///    0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
-    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    ///  |                      ID                       |
-    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    ///  |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
-    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    ///  |                    QDCOUNT                    |
-    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    ///  |                    ANCOUNT                    |
-    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    ///  |                    NSCOUNT                    |
-    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    ///  |                    ARCOUNT                    |
-    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    fn from(bytes_packet: BytesPacket) -> Self {
+        let mut buf = bytes_packet.buf;
 
-    fn from(value: BytesPacket) -> Self {
-        let mut buf = value.buf;
-
+        // Header
         let mut header = DnsHeader::new();
-        header.id = buf.get_u16();
+        header.read_bytes(&mut buf);
 
-        let flags = buf.get_u16();
-        let a = (flags >> 8) as u8;
-        let b = (flags & 0xFF) as u8;
-
-        header.response = (a & (1 << 7)) > 0;
-        header.opcode = (a >> 3) & 0x0F;
-        header.authoritative_answer = (a & (1 << 2)) > 0;
-        header.truncated_message = (a & (1 << 1)) > 0;
-        header.recursion_desired = (a & (1 << 0)) > 0;
-
-        header.recursion_available = (b & (1 << 7)) > 0;
-        header.z = (b & (1 << 6)) > 0;
-        header.rescode = ResultCode::from(b & 0x0F);
-
-        header.question_entries = buf.get_u16();
-        header.answer_entries = buf.get_u16();
-        header.authoritative_entries = buf.get_u16();
-        header.additional_entries = buf.get_u16();
-
+        // Questions
         let mut questions = vec![];
         for _i in 0..header.question_entries {
             let mut domain_name = String::new();
@@ -107,51 +74,18 @@ impl BytesPacket {
 }
 
 impl From<DnsPacket> for BytesPacket {
-    ///                                  1  1  1  1  1  1
-    ///    0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
-    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    ///  |                      ID                       |
-    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    ///  |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
-    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    ///  |                    QDCOUNT                    |
-    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    ///  |                    ANCOUNT                    |
-    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    ///  |                    NSCOUNT                    |
-    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    ///  |                    ARCOUNT                    |
-    ///  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-
-    fn from(value: DnsPacket) -> Self {
+    fn from(dns_packet: DnsPacket) -> Self {
         let mut bp = BytesPacket::new();
 
-        let header = value.header;
-        bp.buf.put_u16(header.id);
+        // Header
+        dns_packet.header.write_bytes(&mut bp.buf);
 
-        let a: u8 = (header.response as u8) << 7
-            | (header.opcode << 3)
-            | (header.authoritative_answer as u8) << 2
-            | (header.truncated_message as u8) << 1
-            | (header.recursion_desired as u8);
-
-        let b: u8 = (header.recursion_available as u8) << 7
-            | (header.z as u8) << 6
-            | (header.rescode as u8);
-
-        let flags = (a as u16) << 8 | (b as u16);
-        bp.buf.put_u16(flags);
-
-        bp.buf.put_u16(header.question_entries);
-        bp.buf.put_u16(header.answer_entries);
-        bp.buf.put_u16(header.authoritative_entries);
-        bp.buf.put_u16(header.additional_entries);
-
-        for i in 0..header.question_entries as usize {
-            let question = value
+        // Questions
+        for i in 0..dns_packet.header.question_entries as usize {
+            let question = dns_packet
                 .questions
                 .get(i)
-                .expect("questions should not be empty if ,correct count was set");
+                .expect("questions should not be empty if, correct count was set");
 
             for label in question.domain_name.split('.') {
                 let len = label.len() as u8;
