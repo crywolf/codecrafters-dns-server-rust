@@ -4,7 +4,6 @@ use std::net::UdpSocket;
 use crate::{
     header::ResponseCode,
     packet::{BytesPacket, DnsPacket},
-    question::DnsQuestion,
     record::DnsRecord,
 };
 
@@ -39,24 +38,23 @@ fn main() -> Result<()> {
                     0 => ResponseCode::NOERROR,
                     _ => ResponseCode::NOTIMP, // Not implemented
                 };
-                let domain_name = domain_name::DomainName::from("codecrafters.io.");
-                let dns_question = DnsQuestion::new(
-                    domain_name,
-                    question::QueryType::A,
-                    question::QueryClass::IN,
-                );
-                response.questions.push(dns_question);
+                response.questions = received.questions;
+                response.header.question_entries = response.questions.len() as u16;
 
-                response.header.answer_entries = 1;
-                let domain_name = domain_name::DomainName::from("codecrafters.io.");
-                let dns_answer = DnsRecord::new(
-                    domain_name,
-                    record::RecordType::A,
-                    record::RecordClass::IN,
-                    60,
-                    std::net::Ipv4Addr::new(8, 8, 8, 8),
-                );
-                response.answers.push(dns_answer);
+                for question in response.questions.iter() {
+                    let domain_name = question.domain_name.clone();
+                    let dns_answer = DnsRecord::new(
+                        domain_name,
+                        record::RecordType::A,
+                        record::RecordClass::IN,
+                        60,
+                        std::net::Ipv4Addr::new(8, 8, 8, 8),
+                    );
+                    response.answers.push(dns_answer);
+                }
+
+                response.header.answer_entries = response.answers.len() as u16;
+
                 println!("Sent DNS packet: {:#?}", response);
 
                 let bytes_packet = BytesPacket::from(response);
