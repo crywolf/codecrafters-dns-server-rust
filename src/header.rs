@@ -1,6 +1,6 @@
 #[allow(clippy::upper_case_acronyms, dead_code)]
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
-pub enum ResultCode {
+pub enum ResponseCode {
     // No error condition
     #[default]
     NOERROR = 0,
@@ -24,7 +24,7 @@ pub enum ResultCode {
     REFUSED = 5,
 }
 
-impl From<u8> for ResultCode {
+impl From<u8> for ResponseCode {
     fn from(value: u8) -> Self {
         match value {
             1 => Self::FORMERR,
@@ -77,7 +77,7 @@ pub struct DnsHeader {
     /// Response Code (RCODE)
     /// Set by the server to indicate the status of the response, i.e. whether or not it was successful or failed,
     /// and in the latter case providing details about the cause of the failure.
-    pub rescode: ResultCode, // 4 bits
+    pub rescode: ResponseCode, // 4 bits
 
     /// Question Count (QDCOUNT)
     /// The number of entries in the Question Section
@@ -136,7 +136,7 @@ impl DnsHeader {
 
         self.recursion_available = (b & (1 << 7)) > 0;
         self.z = (b & (1 << 6)) > 0;
-        self.rescode = ResultCode::from(b & 0x0F);
+        self.rescode = ResponseCode::from(b & 0x0F);
 
         self.question_entries = buf.get_u16();
         self.answer_entries = buf.get_u16();

@@ -150,7 +150,7 @@ mod tests {
         dns_packet.header.response = true;
         dns_packet.header.truncated_message = true;
         dns_packet.header.recursion_available = true;
-        dns_packet.header.rescode = crate::header::ResultCode::SERVFAIL;
+        dns_packet.header.rescode = crate::header::ResponseCode::SERVFAIL;
 
         dns_packet.header.question_entries = 1;
         let domain_name = DomainName::from("codecrafters.io.");

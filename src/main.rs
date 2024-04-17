@@ -2,6 +2,7 @@ use anyhow::Result;
 use std::net::UdpSocket;
 
 use crate::{
+    header::ResponseCode,
     packet::{BytesPacket, DnsPacket},
     question::DnsQuestion,
     record::DnsRecord,
@@ -24,23 +25,29 @@ fn main() -> Result<()> {
 
                 let mut bp = BytesPacket::new();
                 bp.buf.extend_from_slice(&buf);
-                let dp = DnsPacket::from(bp);
-                println!("Received DNS package: {:#?}", dp);
+                let received = DnsPacket::from(bp);
+                println!("Received DNS packet: {:#?}", received);
 
                 // Response
-                let mut dns_packet = DnsPacket::new();
-                dns_packet.header.id = 1234;
-                dns_packet.header.response = true;
-                dns_packet.header.question_entries = 1;
+                let mut response = DnsPacket::new();
+                response.header.id = received.header.id;
+                response.header.response = true;
+                response.header.question_entries = 1;
+                response.header.opcode = received.header.opcode;
+                response.header.recursion_desired = received.header.recursion_desired;
+                response.header.rescode = match received.header.opcode {
+                    0 => ResponseCode::NOERROR,
+                    _ => ResponseCode::NOTIMP, // Not implemented
+                };
                 let domain_name = domain_name::DomainName::from("codecrafters.io.");
                 let dns_question = DnsQuestion::new(
                     domain_name,
                     question::QueryType::A,
                     question::QueryClass::IN,
                 );
-                dns_packet.questions.push(dns_question);
+                response.questions.push(dns_question);
 
-                dns_packet.header.answer_entries = 1;
+                response.header.answer_entries = 1;
                 let domain_name = domain_name::DomainName::from("codecrafters.io.");
                 let dns_answer = DnsRecord::new(
                     domain_name,
@@ -49,10 +56,10 @@ fn main() -> Result<()> {
                     60,
                     std::net::Ipv4Addr::new(8, 8, 8, 8),
                 );
-                dns_packet.answers.push(dns_answer);
-                println!("Sent DNS package: {:#?}", dns_packet);
+                response.answers.push(dns_answer);
+                println!("Sent DNS packet: {:#?}", response);
 
-                let bytes_packet = BytesPacket::from(dns_packet);
+                let bytes_packet = BytesPacket::from(response);
 
                 udp_socket
                     .send_to(&bytes_packet.buf, source)
