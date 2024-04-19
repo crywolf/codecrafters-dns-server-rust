@@ -32,10 +32,11 @@ which relate to the query, but are not strictly answers for the
 question.
 */
 
-use crate::domain_name::LookupTable;
 use crate::header::DnsHeader;
 use crate::question::DnsQuestion;
 use crate::record::DnsRecord;
+use crate::{domain_name::LookupTable, header::HEADER_LENGTH};
+
 use bytes::BytesMut;
 
 /// Whole DNS packet
@@ -64,7 +65,7 @@ impl From<BytesPacket> for DnsPacket {
         let mut header = DnsHeader::new();
         header.read_bytes(&mut buf);
 
-        let mut lookup_table = LookupTable::new();
+        let mut lookup_table = LookupTable::new(HEADER_LENGTH); // For message decompression
 
         // Questions
         let mut questions = vec![];
@@ -110,6 +111,8 @@ impl From<DnsPacket> for BytesPacket {
         // Header
         dns_packet.header.write_bytes(&mut bp.buf);
 
+        let mut lookup_table = LookupTable::new(HEADER_LENGTH); // For message compression
+
         // Questions
         for i in 0..dns_packet.header.question_entries as usize {
             let question = dns_packet
@@ -117,7 +120,7 @@ impl From<DnsPacket> for BytesPacket {
                 .get(i)
                 .expect("questions should not be empty if correct count was set");
 
-            question.write_bytes(&mut bp.buf);
+            question.write_bytes(&mut bp.buf, &mut lookup_table);
         }
 
         // Answers
@@ -127,7 +130,7 @@ impl From<DnsPacket> for BytesPacket {
                 .get(i)
                 .expect("answers should not be empty if correct count was set");
 
-            answer.write_bytes(&mut bp.buf);
+            answer.write_bytes(&mut bp.buf, &mut lookup_table);
         }
 
         bp

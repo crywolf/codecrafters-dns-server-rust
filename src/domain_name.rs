@@ -47,12 +47,21 @@ impl DomainName {
         domain_name
     }
 
-    pub fn write_bytes(&self, buf: &mut impl bytes::BufMut) {
+    pub fn write_bytes(&self, buf: &mut impl bytes::BufMut, lookup_table: &mut LookupTable) {
+        if let Some(&pos) = lookup_table.compress(self) {
+            // two MSB 0xC000 (in binary 11000000 00000000) marks pointer
+            let pos = pos | 0xC000;
+            buf.put_u16(pos);
+            return;
+        }
+
         for label in self.0.split('.') {
             let len = label.len() as u8;
             buf.put_u8(len);
             buf.put(label.as_bytes());
         }
+
+        lookup_table.insert(self);
     }
 }
 
@@ -70,14 +79,18 @@ impl From<&str> for DomainName {
 
 use std::collections::HashMap;
 
+/// For message compression and decompression
+/// https://www.rfc-editor.org/rfc/rfc1035#section-4.1.4
 pub struct LookupTable {
     decompression: Decompression,
+    compression: Compression,
 }
 
 impl LookupTable {
-    pub fn new() -> Self {
+    pub fn new(pos: u16) -> Self {
         Self {
-            decompression: Decompression::new(),
+            decompression: Decompression::new(pos),
+            compression: Compression::new(),
         }
     }
 
@@ -103,6 +116,7 @@ impl LookupTable {
                 label.push_str(next_label);
             }
             self.decompression.map.insert(pos, label.to_string());
+            self.compression.map.insert(label.to_string(), pos);
             self.decompression.pos = pos;
         }
     }
@@ -110,17 +124,33 @@ impl LookupTable {
     pub fn decompress(&self, pos: u16) -> Option<&String> {
         self.decompression.map.get(&pos)
     }
+
+    pub fn compress(&self, domain_name: &DomainName) -> Option<&u16> {
+        self.compression.map.get(&domain_name.0)
+    }
 }
 
 struct Decompression {
-    pos: u16,
+    pos: u16, // position
     map: HashMap<u16, String>,
 }
 
 impl Decompression {
+    fn new(pos: u16) -> Self {
+        Self {
+            pos,
+            map: HashMap::new(),
+        }
+    }
+}
+
+struct Compression {
+    map: HashMap<String, u16>,
+}
+
+impl Compression {
     fn new() -> Self {
         Self {
-            pos: 12, // Header is 12 bytes long
             map: HashMap::new(),
         }
     }

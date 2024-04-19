@@ -93,8 +93,8 @@ impl DnsRecord {
         Self::new(domain_name, query_type, class, ttl, data)
     }
 
-    pub fn write_bytes(&self, buf: &mut impl bytes::BufMut) {
-        self.domain_name.write_bytes(buf);
+    pub fn write_bytes(&self, buf: &mut impl bytes::BufMut, lookup_table: &mut LookupTable) {
+        self.domain_name.write_bytes(buf, lookup_table);
         buf.put_u16(RecordType::A.into());
         buf.put_u16(RecordClass::IN.into());
         buf.put_u32(self.ttl);

@@ -1,3 +1,5 @@
+pub const HEADER_LENGTH: u16 = 12; // Header is 12 bytes long
+
 #[allow(clippy::upper_case_acronyms, dead_code)]
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub enum ResponseCode {

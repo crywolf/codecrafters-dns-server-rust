@@ -54,8 +54,8 @@ impl DnsQuestion {
         Self::new(domain_name, query_type, class)
     }
 
-    pub fn write_bytes(&self, buf: &mut impl bytes::BufMut) {
-        self.domain_name.write_bytes(buf);
+    pub fn write_bytes(&self, buf: &mut impl bytes::BufMut, lookup_table: &mut LookupTable) {
+        self.domain_name.write_bytes(buf, lookup_table);
 
         buf.put_u16(QueryType::A.into());
         buf.put_u16(QueryClass::IN.into());
