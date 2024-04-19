@@ -1,6 +1,6 @@
 use std::net::Ipv4Addr;
 
-use crate::domain_name::DomainName;
+use crate::domain_name::{DomainName, LookupTable};
 
 /// Resource record format
 ///
@@ -82,8 +82,8 @@ impl DnsRecord {
         }
     }
 
-    pub fn from_bytes(buf: &mut impl bytes::Buf) -> Self {
-        let domain_name = DomainName::from_bytes(buf);
+    pub fn from_bytes(buf: &mut impl bytes::Buf, lookup_table: &mut LookupTable) -> Self {
+        let domain_name = DomainName::from_bytes(buf, lookup_table);
         let query_type = RecordType::from(buf.get_u16());
         let class = RecordClass::from(buf.get_u16());
         let ttl = buf.get_u32();

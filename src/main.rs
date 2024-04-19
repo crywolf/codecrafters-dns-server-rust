@@ -59,6 +59,8 @@ fn main() -> Result<()> {
 
                 let bytes_packet = BytesPacket::from(response);
 
+                println!("Sent {} bytes to {}", bytes_packet.buf.len(), source);
+
                 udp_socket
                     .send_to(&bytes_packet.buf, source)
                     .expect("Failed to send response");

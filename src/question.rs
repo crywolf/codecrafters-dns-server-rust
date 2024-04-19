@@ -1,4 +1,4 @@
-use crate::domain_name::DomainName;
+use crate::domain_name::{DomainName, LookupTable};
 
 /// The question section contains a list of questions (usually just 1) that the sender wants to ask the receiver.
 /// This section is present in both query and reply packets.
@@ -46,8 +46,8 @@ impl DnsQuestion {
         }
     }
 
-    pub fn from_bytes(buf: &mut impl bytes::Buf) -> Self {
-        let domain_name = DomainName::from_bytes(buf);
+    pub fn from_bytes(buf: &mut impl bytes::Buf, lookup_table: &mut LookupTable) -> Self {
+        let domain_name = DomainName::from_bytes(buf, lookup_table);
         let query_type = QueryType::from(buf.get_u16());
         let class = QueryClass::from(buf.get_u16());
 

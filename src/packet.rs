@@ -32,6 +32,7 @@ which relate to the query, but are not strictly answers for the
 question.
 */
 
+use crate::domain_name::LookupTable;
 use crate::header::DnsHeader;
 use crate::question::DnsQuestion;
 use crate::record::DnsRecord;
@@ -63,17 +64,19 @@ impl From<BytesPacket> for DnsPacket {
         let mut header = DnsHeader::new();
         header.read_bytes(&mut buf);
 
+        let mut lookup_table = LookupTable::new();
+
         // Questions
         let mut questions = vec![];
         for _i in 0..header.question_entries {
-            let question = DnsQuestion::from_bytes(&mut buf);
+            let question = DnsQuestion::from_bytes(&mut buf, &mut lookup_table);
             questions.push(question);
         }
 
         // Answers
         let mut answers = vec![];
         for _i in 0..header.answer_entries {
-            let answer = DnsRecord::from_bytes(&mut buf);
+            let answer = DnsRecord::from_bytes(&mut buf, &mut lookup_table);
             answers.push(answer);
         }
 
