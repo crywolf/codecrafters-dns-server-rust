@@ -39,7 +39,7 @@ impl From<u8> for ResponseCode {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Copy, Clone, PartialEq)]
 pub struct DnsHeader {
     /// Packet Identifier (ID)
     /// A random identifier is assigned to query packets. Response packets must reply with the same id.

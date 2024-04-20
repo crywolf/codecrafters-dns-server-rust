@@ -9,6 +9,11 @@ and doing recursive resolve. Along the way we'll learn about the DNS protocol,
 DNS packet format, root servers, authoritative servers, forwarding servers,
 various record types (A, AAAA, CNAME, etc) and more.
 
+You can read more about the full DNS packet format on [Wikipedia](https://en.wikipedia.org/wiki/Domain_Name_System#DNS_message_format), or in [RFC 1035](https://tools.ietf.org/html/rfc1035#section-4.1). Another version is [here](https://www.rfc-editor.org/rfc/rfc1035#section-4.1.4).
+
+This [link](https://github.com/EmilHernvall/dnsguide/blob/b52da3b32b27c81e5c6729ac14fe01fef8b1b593/chapter1.md) is a good tutorial that walks through the DNS packet format in detail.
+
+
 **Note**: If you're viewing this repo on GitHub, head over to
 [codecrafters.io](https://codecrafters.io) to try the challenge.
 
